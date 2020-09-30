@@ -1,7 +1,5 @@
 package moura.sdp.toolbox.converter;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,7 +62,7 @@ public class Converter {
         if (entry == null) {
             throw new ConverterException("There is no converter registered for converting " + target.getClass() + " to " + resultClass);
         }
-        MutableConverterContext context = new MutableConverterContext();
+        MutableConverterImpl context = new MutableConverterImpl();
         context.setParams(hints);
         context.setConverter(this);
         return (R) entry.convert(target, context);

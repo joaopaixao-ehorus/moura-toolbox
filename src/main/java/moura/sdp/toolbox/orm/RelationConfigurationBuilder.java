@@ -1,10 +1,11 @@
 package moura.sdp.toolbox.orm;
 
+import moura.sdp.toolbox.common.Builder;
 import moura.sdp.toolbox.query.TypedQueryBuilder;
 
 import java.util.function.Consumer;
 
-public class RelationConfigurationBuilder<T, E> {
+public class RelationConfigurationBuilder<T, E> implements Builder<RelationConfiguration<T, E>> {
 
     private MutableRelationConfiguration<T, E> config = new MutableRelationConfiguration<>();
 
@@ -39,7 +40,7 @@ public class RelationConfigurationBuilder<T, E> {
         return this;
     }
 
-    public RelationConfiguration<T, E> done() {
+    public RelationConfiguration<T, E> build() {
         config.makeDefaults();
         RelationConfiguration<T, E> oldConfig = config;
         config = new MutableRelationConfiguration<>();

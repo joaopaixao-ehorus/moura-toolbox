@@ -2,7 +2,7 @@ package moura.sdp.toolbox.orm;
 
 import moura.sdp.toolbox.converter.Converter;
 import moura.sdp.toolbox.converter.ConverterContext;
-import moura.sdp.toolbox.converter.MutableConverterContext;
+import moura.sdp.toolbox.converter.MutableConverterImpl;
 import moura.sdp.toolbox.query.*;
 import moura.sdp.toolbox.query.Statement;
 import moura.sdp.toolbox.query.dialect.Dialect;
@@ -12,7 +12,6 @@ import java.sql.*;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class Database {
 
@@ -122,7 +121,7 @@ public class Database {
 
     public <T> List<T> getQueryResults(Query query, Class<T> resultClass) {
         try {
-            MutableConverterContext context = new MutableConverterContext();
+            MutableConverterImpl context = new MutableConverterImpl();
             context.setConverter(converter);
             context.setParams(query.getHints());
             Connection connection = getConnection();

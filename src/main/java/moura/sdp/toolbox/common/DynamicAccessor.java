@@ -8,10 +8,10 @@ public interface DynamicAccessor<T> {
 
     void setAttribute(T entity, String attribute, Object value, ConverterContext context);
 
-    Object getAttribute(T entity, String attribute);
+    Object getAttribute(T entity, String attribute, ConverterContext context);
 
     void setAttributes(T entity, Map<String, Object> attributes, ConverterContext context);
 
-    Map<String, Object> getAttributes(T entity);
+    Map<String, Object> getAttributes(T entity, ConverterContext context);
 
 }

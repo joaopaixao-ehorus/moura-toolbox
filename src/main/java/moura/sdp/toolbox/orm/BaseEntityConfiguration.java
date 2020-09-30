@@ -1,77 +1,33 @@
 package moura.sdp.toolbox.orm;
 
-import moura.sdp.toolbox.converter.Converter;
 import moura.sdp.toolbox.converter.ConverterContext;
-import moura.sdp.toolbox.converter.MutableConverterContext;
+import moura.sdp.toolbox.converter.MutableConverterImpl;
 import moura.sdp.toolbox.exception.AttributeNotFoundException;
-import moura.sdp.toolbox.query.*;
+import moura.sdp.toolbox.query.RelationToFetch;
+import moura.sdp.toolbox.query.TypedQueryBuilder;
 import moura.sdp.toolbox.query.exception.QueryConstructionException;
 import moura.sdp.toolbox.utils.ReflectionUtils;
 import moura.sdp.toolbox.utils.StringUtils;
 
-import javax.management.relation.Relation;
-import javax.xml.crypto.Data;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public abstract class BaseEntityConfiguration<T> implements EntityConfiguration<T> {
 
-    private Class<T> clazz;
-    private String idColumn;
-    private String tableName;
-    private List<RelationConfiguration<?, T>> relations;
+    private final Class<T> clazz;
+    private final String idColumn;
+    private final String tableName;
 
     @SuppressWarnings("unchecked")
     public BaseEntityConfiguration() {
         clazz = (Class<T>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         idColumn = "id";
         tableName = StringUtils.snakeCase(getEntityClass().getSimpleName());
-        configure();
-    }
-
-    protected void setEntityClass(Class<T> clazz) {
-        this.clazz = clazz;
-    }
-
-    protected void setIdColumn(String idColumn) {
-        this.idColumn = idColumn;
-    }
-
-    protected void setTableName(String tableName) {
-        this.tableName = tableName;
-    }
-
-    public void addRelation(RelationConfiguration<?, T> relation) {
-        if (relations == null) {
-            relations = new ArrayList<>();
-        }
-        relations.add(relation);
-    }
-
-
-    protected void configure() {
-    }
-
-    public void addRelation(RelationConfigurationBuilder<?, T> builder) {
-        addRelation(builder.done());
-    };
-
-    protected RelationConfigurationBuilder<?, T> hasMany(Class<?> relationClass) {
-        return new RelationConfigurationBuilder<>(relationClass, getEntityClass(), RelationType.HAS_MANY);
-    }
-
-    protected RelationConfigurationBuilder<?, T> hasOne(Class<?> relationClass) {
-        return new RelationConfigurationBuilder<>(relationClass, getEntityClass(), RelationType.HAS_ONE);
-    }
-
-    protected RelationConfigurationBuilder<?, T> belongsTo(Class<?> relationClass) {
-        return new RelationConfigurationBuilder<>(relationClass, getEntityClass(), RelationType.BELONGS_TO);
     }
 
     @Override
-    public boolean isNew(T entity) {
-        return getAttribute(entity, getIdColumn()) == null;
+    public boolean isNew(T entity, ConverterContext context) {
+        return getAttribute(entity, getIdColumn(), context) == null;
     }
 
     @Override
@@ -80,18 +36,13 @@ public abstract class BaseEntityConfiguration<T> implements EntityConfiguration<
     }
 
     @Override
-    public Map<String, Object> getAttributes(T entity) {
-        Map<String, Object> attributes = ReflectionUtils.getAttributes(entity);
-        attributes.remove("table_name");
-        attributes.remove("id_column");
-        attributes.remove("entity_class");
-        attributes.remove("relations");
-        return attributes;
+    public Map<String, Object> getAttributes(T entity, ConverterContext context) {
+        return ReflectionUtils.getAttributes(entity);
     }
 
     @Override
-    public Map<String, Object> getOwnAttributes(T entity) {
-        Map<String, Object> attributes = getAttributes(entity);
+    public Map<String, Object> getOwnAttributes(T entity, ConverterContext context) {
+        Map<String, Object> attributes = getAttributes(entity, context);
         for (RelationConfiguration<?, T> relation : getRelations()) {
             attributes.remove(relation.getName());
         }
@@ -99,7 +50,18 @@ public abstract class BaseEntityConfiguration<T> implements EntityConfiguration<
     }
 
     @Override
-    public Object getAttribute(T entity, String attribute) {
+    public Map<String, Object> getDBColumnValues(T entity, ConverterContext context) {
+        Map<String, Object> attributes = getOwnAttributes(entity, context);
+        for (String key : attributes.keySet()) {
+            if (attributes.get(key) != null) {
+                attributes.put(key, attributes.get(key).toString());
+            }
+        }
+        return attributes;
+    }
+
+    @Override
+    public Object getAttribute(T entity, String attribute, ConverterContext context) {
         return ReflectionUtils.get(entity, attribute);
     }
 
@@ -146,7 +108,7 @@ public abstract class BaseEntityConfiguration<T> implements EntityConfiguration<
 
     @Override
     public List<RelationConfiguration<?, T>> getRelations() {
-        return relations;
+        return Collections.emptyList();
     }
 
     @Override
@@ -180,10 +142,10 @@ public abstract class BaseEntityConfiguration<T> implements EntityConfiguration<
 
     @Override
     public T save(Database database, T object) {
-        MutableConverterContext converterContext = new MutableConverterContext();
+        MutableConverterImpl converterContext = new MutableConverterImpl();
         converterContext.setConverter(database.getConverter());
-        if (isNew(object)) {
-            Map<String, Object> attributes = getOwnAttributes(object);
+        if (isNew(object, converterContext)) {
+            Map<String, Object> attributes = getDBColumnValues(object, converterContext);
             attributes.remove(getIdColumn());
             StatementResult result = database
                     .insert()
@@ -192,11 +154,11 @@ public abstract class BaseEntityConfiguration<T> implements EntityConfiguration<
                     .run();
             setAttribute(object, getIdColumn(), result.getGeneratedKeys().get(0), converterContext);
         } else {
-            Map<String, Object> attributes = getOwnAttributes(object);
+            Map<String, Object> attributes = getDBColumnValues(object, converterContext);
             database.update()
                     .withValues(attributes)
                     .withTable(getTableName())
-                    .where(getIdColumn()).is(getAttribute(object, getIdColumn()))
+                    .where(getIdColumn()).is(getAttribute(object, getIdColumn(), converterContext))
                     .run();
         }
         return object;
@@ -204,7 +166,7 @@ public abstract class BaseEntityConfiguration<T> implements EntityConfiguration<
 
     @Override
     public void delete(Database database, T object) {
-        Object id = getAttribute(object, getIdColumn());
+        Object id = getAttribute(object, getIdColumn(), ConverterContext.of(database.getConverter()));
         database.delete().table(getTableName()).where(getIdColumn()).is(id).run();
     }
 

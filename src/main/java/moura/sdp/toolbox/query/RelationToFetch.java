@@ -1,11 +1,9 @@
 package moura.sdp.toolbox.query;
 
-import moura.sdp.toolbox.converter.MutableConverterContext;
 import moura.sdp.toolbox.orm.*;
 
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class RelationToFetch<T, E>  {
 

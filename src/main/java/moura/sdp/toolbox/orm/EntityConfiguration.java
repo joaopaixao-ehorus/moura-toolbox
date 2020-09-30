@@ -20,11 +20,13 @@ public interface EntityConfiguration<T> extends DynamicAccessor<T> {
 
     Class<T> getEntityClass();
 
-    Map<String, Object> getOwnAttributes(T entity);
+    Map<String, Object> getOwnAttributes(T entity, ConverterContext context);
+
+    Map<String, Object> getDBColumnValues(T entity, ConverterContext context);
 
     T modelToEntity(Model model, ConverterContext context);
 
-    boolean isNew(T entity);
+    boolean isNew(T entity, ConverterContext context);
 
     void buildQuery(TypedQueryBuilder<T> builder);
 

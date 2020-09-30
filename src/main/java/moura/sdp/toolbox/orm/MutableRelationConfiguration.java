@@ -1,6 +1,6 @@
 package moura.sdp.toolbox.orm;
 
-import moura.sdp.toolbox.converter.MutableConverterContext;
+import moura.sdp.toolbox.converter.MutableConverterImpl;
 import moura.sdp.toolbox.query.RelationToFetch;
 import moura.sdp.toolbox.query.TypedQuery;
 import moura.sdp.toolbox.query.TypedQueryBuilder;
@@ -34,10 +34,6 @@ public class MutableRelationConfiguration<T, E> implements RelationConfiguration
 
     public void setFKColumn(String fkColumn) {
         this.fkColumn = fkColumn;
-    }
-
-    public Consumer<TypedQueryBuilder<T>> getMakeQuery() {
-        return makeQuery;
     }
 
     public void setMakeQuery(Consumer<TypedQueryBuilder<T>> makeQuery) {
@@ -77,7 +73,10 @@ public class MutableRelationConfiguration<T, E> implements RelationConfiguration
         String entityKey = getType().equals(RelationType.BELONGS_TO) ? getFKColumn() : entityConfig.getIdColumn();
         String relationKey = getType().equals(RelationType.BELONGS_TO) ? relationEntityConfig.getIdColumn() : getFKColumn();
 
-        List<Object> ids = entities.stream().map(e -> entityConfig.getAttribute(e, entityKey)).collect(Collectors.toList());
+        MutableConverterImpl context = new MutableConverterImpl();
+        context.setConverter(database.getConverter());
+
+        List<Object> ids = entities.stream().map(e -> entityConfig.getAttribute(e, entityKey, context)).collect(Collectors.toList());
         TypedQueryBuilder<T> builder = database.from(getRelationClass()).where(relationKey).in(ids);
         makeQuery(builder);
         relationToFetch.enhance(builder);
@@ -85,24 +84,22 @@ public class MutableRelationConfiguration<T, E> implements RelationConfiguration
         TypedQuery<T> query = builder.done();
         List<T> relationEntities = query.all();
 
-        Map<Object, E> indexed = new HashMap<>();
-
-        MutableConverterContext context = new MutableConverterContext();
-        context.setConverter(database.getConverter());
         context.setParams(query.getHints());
+
+        Map<Object, E> indexed = new HashMap<>();
 
         for (E entity : entities) {
             if (getType().equals(RelationType.HAS_MANY)) {
                 entityConfig.setAttribute(entity, getName(), new ArrayList<>(), context);
             }
-            indexed.put(entityConfig.getAttribute(entity, entityKey), entity);
+            indexed.put(entityConfig.getAttribute(entity, entityKey, context), entity);
         }
 
         for (T relationEntity : relationEntities) {
-            E entity = indexed.get(relationEntityConfig.getAttribute(relationEntity, relationKey));
+            E entity = indexed.get(relationEntityConfig.getAttribute(relationEntity, relationKey, context));
             if (getType().equals(RelationType.HAS_MANY)) {
                 @SuppressWarnings("unchecked")
-                Collection<T> list = (Collection<T>) entityConfig.getAttribute(entity, getName());
+                Collection<T> list = (Collection<T>) entityConfig.getAttribute(entity, getName(), context);
                 list.add(relationEntity);
             } else {
                 entityConfig.setAttribute(entity, getName(), relationEntity, context);

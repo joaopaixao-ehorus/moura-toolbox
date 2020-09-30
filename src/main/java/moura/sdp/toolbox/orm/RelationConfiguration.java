@@ -7,6 +7,10 @@ import java.util.List;
 
 public interface RelationConfiguration<T, E> {
 
+    static <R> RelationsConfigurationBuilder<R> buildList(Class<R> clazz) {
+        return new RelationsConfigurationBuilder<>(clazz);
+    }
+
     void load(Database database, List<E> entities, EntityConfiguration<E> entityConfig, RelationToFetch<T, E> relationToFetch);
 
     String getPKColumn();

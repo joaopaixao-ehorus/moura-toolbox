@@ -2,16 +2,10 @@ package moura.sdp.toolbox.converter;
 
 import java.util.Set;
 
-public class MutableConverterContext implements ConverterContext {
+public class MutableConverterImpl implements ConverterContext {
 
     private Converter converter;
     private Set<Object> hints;
-
-    public static ConverterContext of(Converter converter) {
-        MutableConverterContext context = new MutableConverterContext();
-        context.setConverter(converter);
-        return context;
-    }
 
     @Override
     public Converter getConverter() {

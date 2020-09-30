@@ -2,7 +2,7 @@ package moura.sdp.toolbox.orm;
 
 import moura.sdp.toolbox.converter.Converter;
 import moura.sdp.toolbox.converter.ConverterContext;
-import moura.sdp.toolbox.converter.MutableConverterContext;
+import moura.sdp.toolbox.converter.MutableConverterImpl;
 
 import java.util.Map;
 
@@ -11,7 +11,7 @@ public class ModelBuilder {
     private static final ConverterContext defaultConverter;
 
     static {
-        MutableConverterContext context = new MutableConverterContext();
+        MutableConverterImpl context = new MutableConverterImpl();
         context.setConverter(new Converter());
         defaultConverter = context;
     }
