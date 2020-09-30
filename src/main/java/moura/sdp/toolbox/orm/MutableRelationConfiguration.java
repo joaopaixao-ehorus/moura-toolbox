@@ -26,7 +26,7 @@ public class MutableRelationConfiguration<T, E> implements RelationConfiguration
     }
 
     @Override
-    public void makeQuery(TypedQueryBuilder<T> builder) {
+    public void buildQuery(TypedQueryBuilder<T> builder) {
         if (makeQuery != null) {
             makeQuery.accept(builder);
         }
@@ -78,7 +78,7 @@ public class MutableRelationConfiguration<T, E> implements RelationConfiguration
 
         List<Object> ids = entities.stream().map(e -> entityConfig.getAttribute(e, entityKey, context)).collect(Collectors.toList());
         TypedQueryBuilder<T> builder = database.from(getRelationClass()).where(relationKey).in(ids);
-        makeQuery(builder);
+        buildQuery(builder);
         relationToFetch.enhance(builder);
 
         TypedQuery<T> query = builder.done();
@@ -116,10 +116,6 @@ public class MutableRelationConfiguration<T, E> implements RelationConfiguration
 
     public void setPKColumn(String pkColumn) {
         this.pkColumn = pkColumn;
-    }
-
-    public Class<?> getEntityClass() {
-        return entityClass;
     }
 
     public void setEntityClass(Class<E> entityClass) {

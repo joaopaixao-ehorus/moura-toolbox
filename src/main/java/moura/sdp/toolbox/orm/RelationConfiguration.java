@@ -17,7 +17,7 @@ public interface RelationConfiguration<T, E> {
 
     String getFKColumn();
 
-    void makeQuery(TypedQueryBuilder<T> builder);
+    void buildQuery(TypedQueryBuilder<T> builder);
 
     Class<T> getRelationClass();
 
