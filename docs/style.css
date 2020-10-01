@@ -11,10 +11,35 @@ html, body {
 	
 }
 
+#moura-sdp-header:after {
+	clear: both;
+	display: block;
+	content: ' ';
+}
+
 #moura-sdp-header h1 {
 	padding: 10px;
 	margin: 0;
 	font-size: 20px;
+	float: left;
+}
+
+#moura-sdp-header nav {
+	float: right;
+}
+
+#moura-sdp-header nav a {
+	display: block;
+	color: white;
+	text-decoration: none;
+	padding: 0 15px;
+	height: 43px;
+	line-height: 43px;
+}
+
+#moura-sdp-header nav a:hover {
+	background-color: lightgray;
+	color: black;
 }
 
 #moura-sdp-menu,
