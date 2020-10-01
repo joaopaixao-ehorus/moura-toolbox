@@ -147,7 +147,7 @@ class Empresa {
 			<li>Todos os getters são considerados colunas, a não ser os getters para atributos mapeados como relações.</li>
 			<li>Essa entidade tem nenhuma relação nenhuma outra entidade.</li>
 		</ul>
-		<h3>Configurando Entidades</h3>
+		<h3 id="st-configurando-entidades">Configurando Entidades</h3>
 		<p>
 			Para configurar sua entidade, é possível sobreescrever os métodos de EntityConfiguration. Lembrando que estes métodos SEMPRE são chamados para determinar estes dados e não apenas em tempo de carregamento ou inicialização. Por tanto, eles podem retornar informações calculadas em tempo de execução, mas por outro lado, deve-se tomar cuidado caso a implementação do método seja custosa, por isso é recomendado retornar instâncias fixas onde necessário. Seguem exemplos:
 		</p>
@@ -233,7 +233,7 @@ void buildQuery(TypedQueryBuilder&lt;T&gt; builder) {
 		<p>
 			Ensina como deletar a entidade por id.
 		</p>
-		<h3>Configurando Relacionamentos</h3>
+		<h3 id="st-configurando-relacionamentos">Configurando Relacionamentos</h3>
 		<p>
 			Através do EntityConfig também é possível configurar com quais entidades uma entidade se relaciona, através da sobreescrita do método getRelations(). Este método deve retornar uma lista de RelationConfiguration, porém, para simplificar a construção dessa lista existe um builder de conveniência:
 		</p>
