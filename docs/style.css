@@ -1,0 +1,72 @@
+html, body {
+	font-family: arial;
+	background-color: #5DADE2;
+	margin: 0;
+	padding: 0;
+}
+
+#moura-sdp-header {
+	background-color: #1A5276;
+	color: white;
+	
+}
+
+#moura-sdp-header h1 {
+	padding: 10px;
+	margin: 0;
+	font-size: 20px;
+}
+
+#moura-sdp-menu,
+#moura-sdp-content {
+	min-height: 1px;
+	float: left;
+}
+
+#moura-sdp-menu {
+	width: 250px;
+}
+
+#moura-sdp-content {
+	width: calc(100% - 250px);
+	background-color: white;
+	box-sizing: border-box;
+	padding: 0 20px;
+	height: calc(100vh - 43px);
+	overflow: auto;
+}
+
+.moura-sdp-menu-item {
+	display: block;
+	padding: 10px;
+	text-decoration: none;
+	color: black;
+}
+
+.moura-sdp-menu-item:hover {
+	background-color: #1A5276;
+	color: white;
+}
+
+.moura-sdp-menu-item-title {
+	background-color: #4781a7;
+	color: white;
+}
+
+#moura-sdp-content h2 {
+	margin: 0;
+	padding: 20px 0 10px 0;
+	font-size: 30px;
+}
+
+#moura-sdp-content h3 {
+	margin: 0;
+	padding: 20px 0 10px 0;
+	font-size: 20px;
+}
+
+#moura-sdp-content h4 {
+	margin: 0;
+	padding: 20px 0 10px 0;
+	font-size: 18px;
+}

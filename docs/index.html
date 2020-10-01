@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Documentação</title>
+	<link rel="stylesheet" href="styles/default.css">
+	<script src="highlight.pack.js"></script>
+	<script>hljs.initHighlightingOnLoad();</script>
+	<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+	<header id="moura-sdp-header">
+		<h1>JPassion - The flexible java toolkit</h1>
+	</header>
+	<section id="moura-sdp-body">
+		<div id="moura-sdp-menu">
+			<nav></nav>
+		</div>
+		<div id="moura-sdp-content">
+			<h2 id="title-motivation">Motivação</h2>
+			<p>
+				Trabalhando com especições ou outros frameworks Java, você pode ter passado por várias dificuldades. É muito comum na linguagem, ferramentas muito robustas serem desenvolvidas, que permitem ao desenvolvedor se poupar do desenvolvento de várias funcionalidades comuns a grande parte dos projetos, como segurança, autenticação, conexão com banco de dados, validação, serialização em formatos como json e xml, webservices e etc. Com o uso dessas ferramentas é possível investir mais tempo no desenvolvimento da lógica de negócio da aplicação do que nos detalhes de sua implementação.
+			</p>
+			<p>
+				Entretanto existem casos onde o uso dessas ferramentas se torna uma dificuldade. Desde o uso de configurações com XML até o advento das anotações, boa parte das APIs Java são configuradas de forma estática e pouco reativa a condições que surgem em tempo de execução. Mesmo quando uma alternativa é possível, nem sempre ela é documentada ou sequer encorajada. Este problema torna o uso de certas ferramentas muito difícil ou até inviável.
+			</p>
+			<p>
+				JPassion é um conjunto de ferramentas para simplificar o desenvolvimento de aplicações em Java, com uma filosofia de dinamismo e flexibilidade, fazendo do seu software orientado aos requisitos que o seu software realmente tem, e não aos requisitos que ele não tem. Por muitas vezes, o desacoplamento é levado tão a sério que bibliotecas java, alienam o desenvolvedor da capacidade de parametrizar as operações que suas aplicações realizam como validar uma classe ou fazer uma consulta, sendo submetidos a regras regidas por anotações que são verdadeiros corpos inertes no código lidas pela custoza magia da reflexão, acomplados como metadados às classes tornando comum a necessidade de escrever ClasseA e ClasseB apenas porque uma anotação deve ser usada em um contexto e não em outro. Por exemplo, com as ferramentas que já utilizou, o quanto é fácil persistir uma entidade em uma tabela ou em outra dependendo da situação? Ou o quanto é fácil aplicar uma regra de validação para um POJO em um momento ou em outro não? JPassion é simples, direto, não te impõem padrões de arquitetura, é projetado para ser sobreescrito e se comportar de maneira dinâmica, e além de tudo, fazer pouco uso de mágicas de reflexão como proxies e carregamento dinâmico de classes, que podem ter graves impactos na performance de sua aplicação, principalmente no momento do carregamento. Com JPassion, a anotação mais comum é @Override.
+			</p>
+			<p>
+				JPassion se mostra util por exemplo em cenários de multi-tenancy, ou em cenários onde são empregadas estratégias de engenharia de dados como divisão de tabelas, porque suas ferramentas facilmente se adaptam a multiplos cenários, inclusive cenários que variam em tempo de execução, sem criar códigos redudantes que podem ser uma saída deselegante com outras APIs.
+			</p>
+			<h3 id="st-sem-jpassion">Sem JPassion</h3>
+			
+<pre><code class="java">
+@Entity
+@Table(name = "app_a_user")
+class UserPlatformA {
+}
+
+@Entity
+@Table(name = "app_b_user")
+class UserPlatformB {
+}
+
+</code></pre>
+			<h3 id="st-com-jpassion">Com JPassion</h3>
+<pre><code class="java">
+class UserConfig extends BaseConfig&lt;User&gt; {
+
+	private ThreadLocal&lt;Platform&gt; platform;
+
+	@Override
+	public String getTable() {
+		return platform.get().getUserTable();
+	}
+
+}
+
+</code></pre>
+			<h2 id="t-bd">Banco de Dados</h2>
+			<p>
+				O JPassion provê uma API simples para consulta, atualização, deleção e criação de entidades. O primeiro passo, é ter uma instância de Database. O Database proverá a API para fazer a maior parte das operações com o banco de dados, sendo que, cada Database por ter apenas um DataSource, se conecta com apenas um schema/banco de dados. Por tanto se a sua aplicação tem várias conexões com bases distintas, terá que ter várias instâncias de Database e usar a correta em tempo de execução.
+			</p>
+			<h3 id="st-instanciando-database">Instanciando o Database</h3>
+<pre><code class="java">
+MysqlDataSource dataSource = new MysqlDataSource();
+dataSource.setDatabaseName("schema");
+dataSource.setUser("root");
+dataSource.setPassword("password");
+dataSource.setServerName("localhost");
+
+Converter converter = new Converter();
+Dialect dialect = new MysqlDialect();
+EntityRegistry registry = new EntityRegistry();
+
+Database database = DatabaseBuilder.create()  // 1
+        .withConverter(converter)             // 2
+        .withDataSource(dataSource)           // 3
+        .withEntityRegistry(registry)         // 4
+        .withDialect(dialect)                 // 5
+        .build();
+
+</code></pre>
+			<p>
+				Você pode criar um singleton ou configurar sua biblioteca de injeção de dependências para fazer este processo e prover uma instância única de Database. A criação do Database não é pesada, mas dentro do Database ficará a conexão com o banco de dados no escopo da thread em questão, ou seja, se uma thread usa dois objetos de Database diferentes, mesmo que para um mesmo datasource, cada uma delas terá uma conexão diferente com o banco da dados.
+			</p>
+			<h4>Passo 1</h4>
+			<p>
+				Assim como em muitos casos no JPassion, a criação de objetos é feita através de builders, que em geral, não são thread safe. O Builder do Database espera até quatro parâmetros, que serão descritos abaixo.
+			</p>
+			<h4>Passo 2</h4>
+			<p>
+				O Converter é uma ferramenta do JPassion que serve para converter objetos em outros. O Converter é explicado em mais detalhes em sua seção, entretanto, tenha em mente que o Converter é usado pelo Database para tarefas como converter colunas do banco para atributos de suas entidades e vice versa.
+			</p>
+			<h4>Passo 3</h4>
+			<p>
+				O DataSource é parte da especificação JDBC e serve para prover ao database acesso ao seu banco de dados. A implementação do DataSource oculta detalhes específicos da conexão com o banco de dados e é implementado por terceiros, neste exemplo usamos a implementação do DataSource do Mysql.
+			</p>
+			<h4>Passo 4</h4>
+			<p>
+				O EntityRegistry é parte do JPassion e é como um balde onde a configuração de todas as entidades está guardada, ele tem como função ensinar ao JPassion como realizar certas tarefas e prover certas configurações como será descrito mais a frente.
+			</p>
+			<h4>Passo 5</h4>
+			<p>
+				O Dialect é uma interface parte do JPassion que converte um objeto de plano de construção de um código sql em um código sql de fato. Uma implementação do Dialect pode ser escrita para qualquer banco relacional, mas até o momento o JPassion conta apenas com a implementação para Mysql.
+			</p>
+			<h3 id="st-mapeando-entidades">Mapeando Entidades</h3>
+			<p>
+				Para mapear uma entidade, é necessário criar uma classe de configuração da mesma e cadastra-la em um registro de entidades. Como você mesmo é responsável por instanciar esta classe e registrar a instância, não existem restrições quanto a ter um construtor sem argumentos por exemplo, se tornando possível sua classe de configuração ter dependências e ser mais complexa. Esta classe deve implementar a interface EntityConfiguration, que possui dezenas de métodos mas sua implementação direta não é recomendada. Basta extender a classe BaseEntityConfiguration. A criação de uma classe como essa, caso não existam requisitos especiais, é muito simples.
+			</p>
+<pre><code class="java">
+class Empresa {
+
+    public static class EmpresaConfig extends BaseEntityConfiguration&lt;Empresa&gt; {}
+
+    private Long id;
+    private String name;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+</code></pre>
+		<p>
+			Criar a classe dentro da classe da sua entidade é um padrão que só é recomendado caso ela não seja muito complexa. Só por extender BaseEntityConfiguration, o mapeamento da entidade Empresa já é funcional, entretanto, uma série de premissas serão levadas em consideração:
+		</p>
+		<ul>
+			<li>A tabela onde estão as empresas se chama o nome da classe no argumento de generics de BaseEntityConfiguration passada para snake case sem pluralização. Por exemplo: Empresa é empresa, FormularioCadastro é formulario_cadastro.</li>
+			<li>O nome da chave primária é "id".</li>
+			<li>Todos os getters são considerados colunas, a não ser os getters para atributos mapeados como relações.</li>
+			<li>Essa entidade tem nenhuma relação nenhuma outra entidade.</li>
+		</ul>
+		<h3>Configurando Entidades</h3>
+		<p>
+			Para configurar sua entidade, é possível sobreescrever os métodos de EntityConfiguration. Lembrando que estes métodos SEMPRE são chamados para determinar estes dados e não apenas em tempo de carregamento ou inicialização. Por tanto, eles podem retornar informações calculadas em tempo de execução, mas por outro lado, deve-se tomar cuidado caso a implementação do método seja custosa, por isso é recomendado retornar instâncias fixas onde necessário. Seguem exemplos:
+		</p>
+		<h4>Mudando a Tabela</h4>
+<pre><code class="java">
+public class EmpresaConfig extends BaseEntityConfiguration&lt;Empresa&gt; {
+
+	@Override
+	public String getTableName() {
+		return "j_passion_empresas";
+	}
+	
+}
+</code></pre>
+		<h4>Mudando a Chave Primária</h4>
+<pre><code class="java">
+public class EmpresaConfig extends BaseEntityConfiguration&lt;Empresa&gt; {
+
+	@Override
+	public String getIdColumn() {
+		return "cnpj";
+	}
+	
+}
+</code></pre>
+		<h4>Fazer um atributo transiente</h4>
+		<p>
+			Como foi dito anteriormente, por padrão, todos os getters da classe são considerados colunas da tabela no banco de dados, por tanto, caso algo queria ser excluído deve-se excluir do resultado do método getOwnAttributes ou sobreescreve-lo por inteiro.
+		</p>
+<pre><code class="java">
+public class EmpresaConfig extends BaseEntityConfiguration&lt;Empresa&gt; {
+
+	@Override
+	Map&lt;String, Object&gt; getOwnAttributes(T entity, ConverterContext context) {
+		Map&lt;String, Object&gt; attributes = super.getOwnAttributes(entity, context);
+		attributes.remove("razao_social");
+		return attributes;
+	}
+	
+}
+</code></pre>
+		<h4>Outros Métodos</h4>
+		<h5>Map&lt;String, Object&gt; getDBColumnValues(T entity, ConverterContext context)</h5>
+		<p>
+			Parecido com getOwnAttributes, mas retorna os attributos como seriam passados para PreparedStatement::setParameter.<br/>
+			Este método se mostra útil quando sua entidade possui attributos que não seriam reconhecidos pela implementação do JDBC utilizada. A implementação padrão usa apenas o resultado de getOwnAttributes.
+		</p>
+		<h5>T modelToEntity(Model model, ConverterContext context)</h5>
+		<p>
+			Ensina como transformar um Model na sua entidade, um Model é a classe padrão retornada por queries que não são tipadas, que é como um simples mapa de atributos e valores com algumas funcionalidades como suporte a conversão de tipos. Se uma query feita pelo Database tem como resultado um objeto ou uma lista de objetos que sejam de qualquer coisa que não um Model, deve-se ensinar ao Database como criar esse objeto através desta função ou criando uma regra no Converter usado pelo Database no caso de ser uma classe que não seja uma entidade. Mais informações sobre o Converter são cobertas em sua sessão. A implementação padrão cria um objeto da entidade com reflexão e atribui os valores com setAttributes.
+		</p>
+		<h5>boolean isNew(T entity, ConverterContext context)</h5>
+		<p>
+			Ensina como deteminar se uma entidade, ao ser enviada como parâmetro para save() deve ser inserida no banco ou atualizada. A implementação normal é verificar se o campo chave primária é nulo.
+		</p>
+		<h5>void buildQuery(TypedQueryBuilder&lt;T&gt; builder)</h5>
+		<p>
+			Permite configurar a query que o Database faria para recuperar instâncias desta entidade, por exemplo:
+		</p>
+<pre><code class="java">
+@Override
+void buildQuery(TypedQueryBuilder&lt;T&gt; builder) {
+	builder.where("deleted").is(false).and("platform_id").is(platformThreadLocal.get().getId());
+}
+</code></pre>
+		<h5>List&lt;RelationConfiguration&lt;?, T&gt;&gt; getRelations()</h5>
+		<p>
+			Configura quais são as relações com outras entidades desta entidade, maiores informações sobre relacionamentos serão descritas nas próximas sessões.
+		</p>
+		<h5>Optional&lt;T&gt; find(Database database, Object id)</h5>
+		<p>
+			Ensina como procurar a entidade por id.
+		</p>
+		<h5>T save(Database database, T object)</h5>
+		<p>
+			Ensina como salvar a entidade.
+		</p>
+		<h5>void delete(Database database, T object)</h5>
+		<p>
+			Ensina como deletar a entidade.
+		</p>
+		<h5>void deleteById(Database database, Object id)</h5>
+		<p>
+			Ensina como deletar a entidade por id.
+		</p>
+		<h3>Configurando Relacionamentos</h3>
+		<p>
+			Através do EntityConfig também é possível configurar com quais entidades uma entidade se relaciona, através da sobreescrita do método getRelations(). Este método deve retornar uma lista de RelationConfiguration, porém, para simplificar a construção dessa lista existe um builder de conveniência:
+		</p>
+<pre><code class="java">
+public static class UserConfig extends BaseEntityConfiguration&lt;User&gt; {
+
+    private static final List&lt;RelationConfiguration&lt;?, User&gt;&gt; relations = RelationConfiguration.buildList(User.class)
+            .hasMany(Compra.class)
+            .belongsTo(Empresa.class)
+            .build();
+
+    @Override
+    public List&lt;RelationConfiguration&lt;?, User&gt;&gt; getRelations() {
+        return relations;
+    }
+
+}
+</code></pre>
+		<p>
+			Assim como em vários casos, JPassion usa convenção ao invés de configuração. Ao usar este método, algumas asserções são feitas:
+		</p>
+		<ul>
+			<li>O getter onde fica a relação é getNomeDaClasseDaRelação</li>
+			<li>O setter onde fica a relação é getNomeDaClasseDaRelação</li>
+			<li>Caso a relação seja hasMany, será adicionado um "s" no final do getter e do setter</li>
+			<li>A chave estrageira é nome_da_casse_da_relacao_id</li>
+		</ul>
+		<p>
+			Usando o mesmo builder é possível fazer configurações nas entidades, por exemplo:
+		</p>
+		<h4>Mudando a Chave Estrangeira</h4>
+<pre><code class="java">
+RelationConfiguration.buildList(User.class)
+        .hasMany(Compra.class, configurer -> {
+        	configurer.withFk("transacao_id");
+    	})
+        .build();
+</code></pre>
+		<h4>Mudando o Nome do Atributo</h4>
+<pre><code class="java">
+RelationConfiguration.buildList(User.class)
+        .hasMany(Compra.class, configurer -> {
+        	configurer.withName("transacoes");
+    	})
+        .build();
+</code></pre>
+		<h3 id="st-registrando-entidades">Registrando Entidades</h3>
+		<p>
+			Feita toda a configuração, ela deve ser registrada em um EntityRegistry para que seja usada por um Database, por exemplo:
+		</p>
+<pre><code class="java">
+EntityRegistry registry = new EntityRegistry();
+registry.registerConfig(User.class, new UserConfiguration());
+
+Database database = DatabaseBuilder.create()
+        .withConverter(converter)           
+        .withDataSource(dataSource)         
+        .withEntityRegistry(registry)        
+        .withDialect(dialect)
+        .build();
+
+</code></pre>
+		<h3 id="st-fazendo-queries">Fazendo Queries</h3>
+		<p>
+			Uma vez feita toda a configuração de um Database, é possível usa-lo para fazer consultas ao banco de dados, por exemplo:
+		</p>
+		<h4>Executando SQL Puro</h4>
+<pre><code class="java">
+Query query = database.createRawQuery("select * from pessoas");
+List&lt;Model&gt; pessoas = query.all();
+for (Model pessoa : pessoas) {
+	System.out.println(pessoa.getString("nome"));
+}
+
+Query query = database.createRawQuery("select * from pessoas where id = ?", Arrays.asList(345));
+Optional&lt;Model&gt; pessoa = query.find();
+System.out.println(pessoa.get().getString("nome"));
+</code></pre>
+		<h4>Usando Auto Conversão</h4>
+		<p>
+			É possível obter os resultados mapeados para outro tipo, mas para isso, o converter passado para o Database deve ser capaz de converter Model para este tipo, isspo porque JPassion evita ao máximo fazer uso de reflexão.
+		</p>
+<pre><code class="java">
+converter.register(model -> {
+	Pessoa pessoa = new Pessoa();
+	pessoa.setId(model.getInteger("id"));
+	pessoa.setNome(model.getString("nome"));
+	return pessoa;
+}, Model.class, Pessoa.class);
+
+Query query = database.createRawQuery("select * from pessoas where id = ?", Arrays.asList(345));
+Optional&lt;Pessoa&gt; pessoa = query.find(Pessoa.class);
+System.out.println(pessoa.getNome());
+</code></pre>
+		<h4>Usando Query Builders</h4>
+		<p>
+			JPassion provê uma API para escrever queries de forma progamática, evitando concatenações trabalhosas de strings para formar código SQL.
+		</p>
+<pre><code class="java">
+Query query1 = database.query().selectAll().from("pessoas").where("id").is(345).build();
+Optional&lt;Pessoa&gt; pessoa1 = query.find(Pessoa.class);
+System.out.println(pessoa1.get().getNome());
+
+Query query2 = database.query().selectAll().from("pessoas").where("idade").greaterThan(18).build();
+Optional&lt;Pessoa&gt; pessoa2 = query.find(Pessoa.class);
+System.out.println(pessoa2.get().getNome());
+
+Query query3 = database.query().select("nome", "idade").from("pessoas").where("idade").greaterThan(18).and("id").in(435, 345, 21).build();
+Optional&lt;Pessoa&gt; pessoa3 = query.find(Pessoa.class);
+System.out.println(pessoa3.get().getNome());
+</code></pre>
+		<h4>Recuperando Entidades</h4>
+		<p>
+			É possível recuperar um objeto de uma entidade que você tenha registrado passando sua classe e o id.
+		</p>
+<pre><code class="java">
+Optional&lt;Pessoa&gt; optional = database.find(Pessoa.class, 7681);
+if (optional.isPresent()) {
+	System.out.println(optional.get().getNome());
+}
+</code></pre>
+		<h4>Usando Query Builders Tipados</h4>
+		<p>
+			Query Builders normais não usam as configurações de entidades e não possuem funcionalidades como carregar relacionamentos, neste caso, é preferível criar um query builder tipado usando o método from() passando como argumento classe da entidade.
+		</p>
+<pre><code class="java">
+TypedQuery&lt;Pessoa&gt; query = database.from(Pessoa.class).where("idade").greaterThan(18).build();
+Optional&lt;Pessoa&gt; pessoa = query.find();
+if (pessoa.isPresent()) {
+	System.out.println(pessoa.get().getNome());
+}
+</code></pre>
+		<p>
+			Um detalhe é que mesmo nos query builders tipados é possível sobreescrever a tabela onde será feita a seleção, dando a possibilidade da tabela onde está a entidade ser dinâmica.
+		</p>
+<pre><code class="java">
+TypedQuery&lt;Pessoa&gt; query = database.from(Pessoa.class).table("platform_xpto_pessoas").where("idade").greaterThan(18).build();
+Optional&lt;Pessoa&gt; pessoa = query.find();
+if (pessoa.isPresent()) {
+	System.out.println(pessoa.get().getNome());
+}
+</code></pre>
+		<h4>Queries com Relacionamentos</h4>
+		<p>
+			Através do query builder tipado é possível recuperar junto a uma entidade relacionamentos que foram mapeados em sua configuração.
+		</p>
+<pre><code class="java">
+TypedQuery&lt;Pessoa&gt; query = database.from(Empresa.class).with(Colaborador.class).where("id").is(124).build();
+Optional&lt;Empresa&gt; optional = query.find();
+if (optional.isPresent()) {
+	Empresa empresa = optional.get();
+	for (Colaborador colabodor : empresa.getColaboradores()) {
+		System.out.println(colaborador.getCpf());
+	}
+}
+</code></pre>
+		<h4>Queries com Relacionamentos Aninhados</h4>
+		<p>
+			É possível passar uma configuração de query para o método with com a query que será feita para buscar esse relacionamento, sendo possível buscar relacionamentos um dentro do outro.
+		</p>
+<pre><code class="java">
+TypedQuery&lt;Pessoa&gt; query = database.from(Empresa.class).with(Colaborador.class, withColaborador -> {
+	withColaborador.with(Endereco.class);
+}).where("id").is(124).build();
+
+Optional&lt;Empresa&gt; optional = query.find();
+if (optional.isPresent()) {
+	Empresa empresa = optional.get();
+	for (Colaborador colabodor : empresa.getColaboradores()) {
+		System.out.println(colaborador.getEndereco().getUf());
+	}
+}
+</code></pre>
+		<h4>Carregando Relacionamentos de Entidades já Recuperadas</h4>
+		<p>
+			Quando é usado o método with em um query builder tipado, os relacionamentos são recuperados por eager loading, mas caso você já tenha uma entidade você pode recuperar seus relacionamentos por lazy loading usando Database::load
+		</p>
+<pre><code class="java">
+database.load(empresa, fetcher -> fetcher.with(Colaborador.class));
+System.out.println(colaborador.getColaboradores().size());
+
+</code></pre>
+		<h3 id="st-alterando-bd">Alterando o Banco de Dados</h3>
+		<p>
+			Até então foi mostrado como fazer consultas no banco de dados, entretando é possível inserir novos registros, atualizar e deletar usando o Database.
+		</p>
+		<h4>Executando SQL Puro</h4>
+<pre><code class="java">
+Statement statement = database.statement("insert into pessoa(name, idade) values (?, ?)", Arrays.asList("José", 14));
+statement.execute();
+
+</code></pre>
+		<h4>Construindo um Insert</h4>
+<pre><code class="java">
+Map&lt;String, Object&gt;> values = new HashMap&lt;&gt;();
+Statement statement = database.insert().table("pessoas").withValues(values).build();
+statement.execute();
+
+</code></pre>
+		<h4>Construindo um Update</h4>
+<pre><code class="java">
+Map&lt;String, Object&gt;> values = new HashMap&lt;&gt;();
+Statement statement = database.update().table("pessoas").withValues(values).where("id").is(124).build();
+statement.execute();
+
+</code></pre>
+		<h4>Construindo um Delete</h4>
+<pre><code class="java">
+Statement statement = database.delete().table("pessoas").where("id").is(124).build();
+statement.execute();
+
+</code></pre>
+		<h4>Salvando Entidades</h4>
+		<p>
+			Ao usar o método Database::save, será chamado EntityConfiguration::isNew para decidir se será feito um insert ou update, a não ser que você tenha sobreescrevido EntityConfiguration::save. Atenção: A implementação padrão de save não faz cascateamento de relações, caso você tenha mudado algo em alguma entidade relacionada, terá que chamar save para ela.
+		</p>
+<pre><code class="java">
+Pessoa pessoa = new Pessoa();
+pessoa.setNome("João");
+pessoa.setIdade(14);
+database.save(pessoa);
+
+</code></pre>
+		<h4>Deletando Entidades</h4>
+<pre><code class="java">
+Optional&lt;Pessoa&gt; optional = database.find(Pessoa.class, 156);
+if (optional.isPresent()) {
+	database.delete(optional.get());
+}
+
+</code></pre>
+<pre><code class="java">
+database.deleteById(Pessoa.class, 156);
+
+</code></pre>
+		<h2 id="converter">Conversor</h2>
+		<p>
+			Sessão em construção
+		</p>
+		<h2 id="rules">Validação</h2>
+		<p>
+			Sessão em construção
+		</p>
+		</div>
+	</section>
+<script type="text/javascript">
+	var menu = document.querySelector("#moura-sdp-menu nav");
+	var headers = document.querySelectorAll("h2, h3");
+
+	headers.forEach(header => {
+		var a = document.createElement("a");
+		a.classList.add("moura-sdp-menu-item");
+		if (header.tagName == "H2") {
+			a.classList.add("moura-sdp-menu-item-title");
+		} else {
+			a.classList.add("moura-sdp-menu-item-sub-title");
+		}
+		a.innerHTML = header.innerHTML;
+		a.setAttribute("href", "#" + header.getAttribute("id"))
+		menu.append(a);
+	});
+
+</script>
+</body>
+</html>
